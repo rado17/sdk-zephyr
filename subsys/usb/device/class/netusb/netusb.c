@@ -125,6 +125,7 @@ bool netusb_enabled(void)
 static void netusb_init(struct net_if *iface)
 {
 	static uint8_t mac[6] = { 0x00, 0x00, 0x5E, 0x00, 0x53, 0x00 };
+	struct in_addr addr;
 
 	LOG_DBG("netusb device initialization");
 
@@ -134,6 +135,13 @@ static void netusb_init(struct net_if *iface)
 	net_if_carrier_off(iface);
 
 	net_if_set_link_addr(iface, mac, sizeof(mac), NET_LINK_ETHERNET);
+
+	if (net_addr_pton(AF_INET, CONFIG_NET_CONFIG_MY_IPV4_ADDR, &addr)) {
+		NET_ERR("Invalid address: %s", CONFIG_NET_CONFIG_MY_IPV4_ADDR);
+		return;
+		}
+
+	net_if_ipv4_addr_add(iface, &addr, NET_ADDR_MANUAL, 0);
 
 	LOG_INF("netusb initialized");
 }

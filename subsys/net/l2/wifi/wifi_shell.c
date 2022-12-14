@@ -259,7 +259,7 @@ static int __wifi_args_to_params(size_t argc, char *argv[],
 static int cmd_wifi_connect(const struct shell *sh, size_t argc,
 			    char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");
 	struct wifi_connect_req_params cnx_params = { 0 };
 
 	if (__wifi_args_to_params(argc - 1, &argv[1], &cnx_params)) {
@@ -287,7 +287,7 @@ static int cmd_wifi_connect(const struct shell *sh, size_t argc,
 static int cmd_wifi_disconnect(const struct shell *sh, size_t argc,
 			       char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	int status;
 
 	context.disconnecting = true;
@@ -316,7 +316,7 @@ static int cmd_wifi_disconnect(const struct shell *sh, size_t argc,
 
 static int cmd_wifi_scan(const struct shell *sh, size_t argc, char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 
 	context.sh = sh;
 
@@ -333,7 +333,7 @@ static int cmd_wifi_scan(const struct shell *sh, size_t argc, char *argv[])
 
 static int cmd_wifi_status(const struct shell *sh, size_t argc, char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	struct wifi_iface_status status = { 0 };
 
 	context.sh = sh;
@@ -402,7 +402,7 @@ static int cmd_wifi_stats(const struct shell *sh, size_t argc, char *argv[])
 {
 #if defined(CONFIG_NET_STATISTICS_WIFI) && \
 					defined(CONFIG_NET_STATISTICS_USER_API)
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	struct net_stats_wifi stats = { 0 };
 	int ret;
 
@@ -425,7 +425,7 @@ static int cmd_wifi_stats(const struct shell *sh, size_t argc, char *argv[])
 
 static int cmd_wifi_ps(const struct shell *sh, size_t argc, char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	struct wifi_ps_params params = { 0 };
 
 	context.sh = sh;
@@ -502,7 +502,7 @@ static int cmd_wifi_ps(const struct shell *sh, size_t argc, char *argv[])
 
 static int cmd_wifi_ps_mode(const struct shell *sh, size_t argc, char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	struct wifi_ps_mode_params params = { 0 };
 
 	context.sh = sh;
@@ -534,7 +534,7 @@ static int cmd_wifi_ps_mode(const struct shell *sh, size_t argc, char *argv[])
 static int cmd_wifi_twt_setup(const struct shell *sh, size_t argc,
 			      char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	struct wifi_twt_params params = { 0 };
 	long neg_type = 0;
 	long setup_cmd = 0;
@@ -582,7 +582,7 @@ static int cmd_wifi_twt_setup(const struct shell *sh, size_t argc,
 static int cmd_wifi_twt_teardown(const struct shell *sh, size_t argc,
 			      char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	struct wifi_twt_params params = { 0 };
 	long neg_type = 0;
 	long setup_cmd = 0;
@@ -624,7 +624,7 @@ static int cmd_wifi_twt_teardown(const struct shell *sh, size_t argc,
 static int cmd_wifi_twt_teardown_all(const struct shell *sh, size_t argc,
 			      char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	struct wifi_twt_params params = { 0 };
 
 	context.sh = sh;
@@ -648,7 +648,7 @@ static int cmd_wifi_twt_teardown_all(const struct shell *sh, size_t argc,
 static int cmd_wifi_ap_enable(const struct shell *sh, size_t argc,
 			      char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 	static struct wifi_connect_req_params cnx_params;
 
 	if (__wifi_args_to_params(argc - 1, &argv[1], &cnx_params)) {
@@ -672,7 +672,7 @@ static int cmd_wifi_ap_enable(const struct shell *sh, size_t argc,
 static int cmd_wifi_ap_disable(const struct shell *sh, size_t argc,
 			       char *argv[])
 {
-	struct net_if *iface = net_if_get_default();
+	struct net_if *iface = net_if_lookup_by_dev_name("wlan0");;
 
 	if (net_mgmt(NET_REQUEST_WIFI_AP_DISABLE, iface, NULL, 0)) {
 		shell_fprintf(sh, SHELL_WARNING, "AP mode disable failed\n");

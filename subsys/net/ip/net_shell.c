@@ -98,6 +98,7 @@ LOG_MODULE_REGISTER(net_shell, LOG_LEVEL_DBG);
 	shell_fprintf(shell, SHELL_WARNING, fmt, ##__VA_ARGS__)
 
 #include "net_private.h"
+int count_seq;
 
 struct net_shell_user_data {
 	const struct shell *shell;
