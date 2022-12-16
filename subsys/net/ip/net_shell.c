@@ -3532,6 +3532,140 @@ static int cmd_net_ipv6(const struct shell *shell, size_t argc, char *argv[])
 	return 0;
 }
 
+#if defined(CONFIG_NET_NATIVE_IPV4)
+static void  ip_address_lifetime_cb(struct net_if *iface, void *user_data)
+{
+	struct net_shell_user_data *data = user_data;
+	const struct shell *shell = data->shell;
+	struct net_if_ipv4 *ipv4 = iface->config.ip.ipv4;
+	const char *extra;
+	int i;
+
+	ARG_UNUSED(user_data);
+
+	PR("\nIPv4 addresses for interface %d (%p) (%s)\n",
+	   net_if_get_by_iface(iface), iface, iface2str(iface, &extra));
+	PR("============================================%s\n", extra);
+
+	if (!ipv4) {
+		PR("No IPv4 config found for this interface.\n");
+		return;
+	}
+
+	PR("Type      \tState    \tLifetime (sec)\tAddress\n");
+
+	for (i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
+		char remaining_str[sizeof("01234567890")];
+		uint64_t remaining;
+
+		if (!ipv4->unicast[i].is_used ||
+		    ipv4->unicast[i].address.family != AF_INET) {
+			continue;
+		}
+
+		remaining = net_timeout_remaining(&ipv4->unicast[i].lifetime,
+						  k_uptime_get_32());
+
+		if (ipv4->unicast[i].is_infinite) {
+			snprintk(remaining_str, sizeof(remaining_str) - 1,
+				 "infinite");
+		} else {
+			snprintk(remaining_str, sizeof(remaining_str) - 1,
+				 "%u", (uint32_t)(remaining / 1000U));
+		}
+
+		PR("%s  \t%s\t%s    \t%12s/%12s\n",
+		       addrtype2str(ipv4->unicast[i].addr_type),
+		       addrstate2str(ipv4->unicast[i].addr_state),
+		       remaining_str,
+		       net_sprint_ipv4_addr(
+			       &ipv4->unicast[i].address.in_addr),
+		       net_sprint_ipv4_addr(
+			       &ipv4->netmask));
+	}
+}
+#endif /* CONFIG_NET_NATIVE_IPV4 */
+
+static int cmd_net_ipv4(const struct shell *shell, size_t argc, char *argv[])
+{
+	struct net_shell_user_data user_data;
+
+	PR("IPv4 support                              : %s\n",
+	   IS_ENABLED(CONFIG_NET_IPV4) ?
+	   "enabled" : "disabled");
+	if (!IS_ENABLED(CONFIG_NET_IPV4)) {
+		return -ENOEXEC;
+	}
+
+#if defined(CONFIG_NET_NATIVE_IPV4)
+	PR("IPv4 fragmentation support                : %s\n",
+	   IS_ENABLED(CONFIG_NET_IPV4_FRAGMENT) ? "enabled" :
+	   "disabled");
+	PR("Max number of IPv4 network interfaces "
+	   "in the system          : %d\n",
+	   CONFIG_NET_IF_MAX_IPV4_COUNT);
+	PR("Max number of unicast IPv4 addresses "
+	   "per network interface   : %d\n",
+	   CONFIG_NET_IF_UNICAST_IPV4_ADDR_COUNT);
+	PR("Max number of multicast IPv4 addresses "
+	   "per network interface : %d\n",
+	   CONFIG_NET_IF_MCAST_IPV4_ADDR_COUNT);
+
+	user_data.shell = shell;
+	user_data.user_data = NULL;
+
+	/* Print information about address lifetime */
+	net_if_foreach(ip_address_lifetime_cb, &user_data);
+#endif
+
+	return 0;
+}
+
+static int cmd_net_ip_add(const struct shell *shell, size_t argc, char *argv[])
+{
+#if defined(CONFIG_NET_NATIVE_IPV4)
+	struct net_if *iface = NULL;
+	int idx;
+	struct in_addr addr;
+
+	if (argv[1]) {
+		idx = get_iface_idx(shell, argv[1]);
+		if (idx < 0) {
+			return -ENOEXEC;
+		}
+
+		iface = net_if_get_by_index(idx);
+		if (!iface) {
+			PR_WARNING("No such interface in index %d\n", idx);
+			return -ENOEXEC;
+		}
+	if (argv[2]) {
+		if (net_addr_pton(AF_INET, argv[2], &addr)) {
+			PR_ERROR("Invalid address: %s\n", argv[2]);
+			return -EINVAL;
+			}
+#if defined(CONFIG_NET_DHCPV4)
+		/* In case DHCP is enabled, make the static address tentative,
+		 * to allow DHCP address to override it. This covers a usecase
+		 * of "there should be a static IP address for DHCP-less setups",
+		 * but DHCP should override it (to use it, NET_IF_MAX_IPV4_ADDR
+		 * should be set to 1). There is another usecase: "there should
+		 * always be static IP address, and optionally, DHCP address".
+		 * For that to work, NET_IF_MAX_IPV4_ADDR should be 2 (or more).
+		 * (In this case, an app will need to bind to the needed addr
+		 * explicitly.)
+		 */
+		net_if_ipv4_addr_add(iface, &addr, NET_ADDR_OVERRIDABLE, 0);
+#else
+		net_if_ipv4_addr_add(iface, &addr, NET_ADDR_MANUAL, 0);
+#endif
+		return 0;
+		}
+		return -1;
+	}
+#endif /* CONFIG_NET_NATIVE_IPV4 */
+}
+
 static int cmd_net_iface(const struct shell *shell, size_t argc, char *argv[])
 {
 	struct net_if *iface = NULL;
@@ -6045,6 +6179,13 @@ SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_udp,
 	SHELL_SUBCMD_SET_END
 );
 
+SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_ip,
+	SHELL_CMD(add, NULL,
+		  "'net ip add <index> <address>' adds the address to the interface.",
+		  cmd_net_ip_add),
+	SHELL_SUBCMD_SET_END
+);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(net_commands,
 	SHELL_CMD(allocs, NULL, "Print network memory allocations.",
 		  cmd_net_allocs),
@@ -6067,6 +6208,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(net_commands,
 		  "Print information about IPv6 specific information and "
 		  "configuration.",
 		  cmd_net_ipv6),
+	SHELL_CMD(ip, &net_cmd_ip,
+		  "Print information about IPv4 specific information and "
+		  "configuration.",
+		  cmd_net_ipv4),
 	SHELL_CMD(mem, NULL, "Print information about network memory usage.",
 		  cmd_net_mem),
 	SHELL_CMD(nbr, &net_cmd_nbr, "Print neighbor information.",
