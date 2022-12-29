@@ -3532,6 +3532,173 @@ static int cmd_net_ipv6(const struct shell *shell, size_t argc, char *argv[])
 	return 0;
 }
 
+static int cmd_net_ip6_add(const struct shell *shell, size_t argc, char *argv[])
+{
+#if defined(CONFIG_NET_NATIVE_IPV6)
+	struct net_if *iface = NULL;
+	int idx;
+	struct in6_addr addr;
+
+	if (argv[1]) {
+		idx = get_iface_idx(shell, argv[1]);
+		if (idx < 0) {
+			return -ENOEXEC;
+		}
+
+		iface = net_if_get_by_index(idx);
+		if (!iface) {
+			PR_WARNING("No such interface in index %d\n", idx);
+			return -ENOEXEC;
+		}
+	if (argv[2]) {
+		if (net_addr_pton(AF_INET6, argv[2], &addr)) {
+			PR_ERROR("Invalid address: %s\n", argv[2]);
+			return -EINVAL;
+			}
+		net_if_ipv6_addr_add(iface, &addr, NET_ADDR_MANUAL, 0);
+
+		return 0;
+		}
+		PR_ERROR("Need address and prefix length(optional) \n");
+		return -1;
+	}
+#endif /* CONFIG_NET_NATIVE_IPV6 */
+}
+
+static int cmd_net_ip6_del(const struct shell *shell, size_t argc, char *argv[])
+{
+#if defined(CONFIG_NET_NATIVE_IPV6)
+	struct net_if *iface = NULL;
+	int idx;
+	struct in6_addr addr;
+
+	if (argv[1]) {
+		idx = get_iface_idx(shell, argv[1]);
+		if (idx < 0) {
+			return -ENOEXEC;
+		}
+
+		iface = net_if_get_by_index(idx);
+		if (!iface) {
+			PR_WARNING("No such interface in index %d\n", idx);
+			return -ENOEXEC;
+		}
+		if (argv[2]) {
+			if (net_addr_pton(AF_INET6, argv[2], &addr)) {
+				PR_ERROR("Invalid address: %s\n", argv[2]);
+				return -EINVAL;
+				}
+			if (!net_if_ipv6_addr_rm(iface, &addr)) {
+				PR_ERROR("Failed to delete %s\n", argv[2]);
+				return -1;
+			}
+			return 0;
+		}
+		PR_ERROR("Need address that needs to be deleted\n");
+		return -1;
+	}
+#endif /* CONFIG_NET_NATIVE_IPV6 */
+	return 0;
+}
+
+static int cmd_net_ip6_route_add(const struct shell *shell, size_t argc, char *argv[])
+{
+#if defined(CONFIG_NET_NATIVE_IPV6)
+	struct net_if *iface = NULL;
+	int idx;
+	int prefix_len = 0;
+	struct net_route_entry *route;
+	struct in6_addr gw = {0};
+	struct in6_addr prefix = { 0 };
+
+	if (argv[1]) {
+		idx = get_iface_idx(shell, argv[1]);
+		if (idx < 0) {
+			return -ENOEXEC;
+		}
+
+		iface = net_if_get_by_index(idx);
+		if (!iface) {
+			PR_WARNING("No such interface in index %d\n", idx);
+			return -ENOEXEC;
+		}
+
+		if (argv[2]) {
+			if (net_addr_pton(AF_INET6, argv[2], &prefix)) {
+				PR_ERROR("Invalid address: %s\n", argv[2]);
+				return -EINVAL;
+			}
+		}
+
+		prefix_len = atoi(argv[3]);
+		
+		if (argv[3]) {
+			if (net_addr_pton(AF_INET6, argv[3], &gw)) {
+				PR_ERROR("Invalid address: %s\n", argv[3]);
+				return -EINVAL;
+			}
+		}
+
+		route = net_route_add(iface,
+				      &prefix,
+				      NET_IPV6_DEFAULT_PREFIX_LEN,
+				      &gw,
+				      NET_IPV6_ND_INFINITE_LIFETIME,
+				      NET_ROUTE_PREFERENCE_MEDIUM);
+		if (route == NULL) {
+			PR_ERROR("Failed to add route");
+			return -1;
+		}
+	} else {
+		PR_ERROR("Incorrect usage: "
+		"net ipv6 route_add <interface index> <dest> <gateway>\n");
+		return -EINVAL;
+	}
+#endif /* CONFIG_NET_NATIVE_IPV6 */
+	return 0;
+}
+
+static int cmd_net_ip6_route_del(const struct shell *shell, size_t argc, char *argv[])
+{
+#if defined(CONFIG_NET_NATIVE_IPV6)
+	struct net_if *iface = NULL;
+	int idx;
+	int prefix_len = 0;
+	struct net_route_entry *route;
+	struct in6_addr prefix = { 0 };
+
+	if (argv[1]) {
+		idx = get_iface_idx(shell, argv[1]);
+		if (idx < 0) {
+			return -ENOEXEC;
+		}
+
+		iface = net_if_get_by_index(idx);
+		if (!iface) {
+			PR_WARNING("No such interface in index %d\n", idx);
+			return -ENOEXEC;
+		}
+
+		if (argv[2]) {
+			if (net_addr_pton(AF_INET6, argv[2], &prefix)) {
+				PR_ERROR("Invalid address: %s\n", argv[2]);
+				return -EINVAL;
+			}
+		}
+
+		route = net_route_lookup(iface, &prefix);	
+		if (route) {
+			net_route_del(route);
+		}
+	} else {
+		PR_ERROR("Incorrect usage: "
+		"net ipv6 route_add <interface index> <dest> <gateway>\n");
+		return -EINVAL;
+	}
+#endif /* CONFIG_NET_NATIVE_IPV6 */
+	return 0;
+}
+
 #if defined(CONFIG_NET_NATIVE_IPV4)
 static void  ip_address_lifetime_cb(struct net_if *iface, void *user_data)
 {
@@ -3658,12 +3825,61 @@ static int cmd_net_ip_add(const struct shell *shell, size_t argc, char *argv[])
 		net_if_ipv4_addr_add(iface, &addr, NET_ADDR_OVERRIDABLE, 0);
 #else
 		net_if_ipv4_addr_add(iface, &addr, NET_ADDR_MANUAL, 0);
-#endif
+#endif	
+
+		if (argv[3]) {
+			/* netmask is provided */
+			if (net_addr_pton(AF_INET, argv[3], &addr)) {
+				PR_ERROR("Invalid netmask: %s", argv[3]);
+			} else {
+				net_if_ipv4_set_netmask(iface, &addr);
+				goto done;
+			}
+		}
+		net_addr_pton(AF_INET, CONFIG_NET_CONFIG_MY_IPV4_NETMASK, &addr);
+		net_if_ipv4_set_netmask(iface, &addr);
+done:
 		return 0;
 		}
+		PR_ERROR("Need address and netmask(optional) \n");
 		return -1;
 	}
 #endif /* CONFIG_NET_NATIVE_IPV4 */
+return 0;
+}
+
+static int cmd_net_ip_del(const struct shell *shell, size_t argc, char *argv[])
+{
+#if defined(CONFIG_NET_NATIVE_IPV4)
+	struct net_if *iface = NULL;
+	int idx;
+	struct in_addr addr;
+
+	if (argv[1]) {
+		idx = get_iface_idx(shell, argv[1]);
+		if (idx < 0) {
+			return -ENOEXEC;
+		}
+
+		iface = net_if_get_by_index(idx);
+		if (!iface) {
+			PR_WARNING("No such interface in index %d\n", idx);
+			return -ENOEXEC;
+		}
+		if (argv[2]) {
+			if (net_addr_pton(AF_INET, argv[2], &addr)) {
+				PR_ERROR("Invalid address: %s\n", argv[2]);
+				return -EINVAL;
+			}
+		}
+		if (! net_if_ipv4_addr_rm(iface, &addr)) {
+			PR_ERROR("Failed to delete %s\n", argv[2]);
+			return -1;
+		}
+	}
+
+#endif /* CONFIG_NET_NATIVE_IPV4 */
+	return 0;
 }
 
 static int cmd_net_iface(const struct shell *shell, size_t argc, char *argv[])
@@ -6183,6 +6399,31 @@ SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_ip,
 	SHELL_CMD(add, NULL,
 		  "'net ip add <index> <address>' adds the address to the interface.",
 		  cmd_net_ip_add),
+	SHELL_CMD(del, NULL,
+		  "'net ip add <index> <address>' adds the address to the interface.",
+		  cmd_net_ip_del),
+	SHELL_SUBCMD_SET_END
+);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_ip6,
+	SHELL_CMD(add, NULL,
+		  "'net ipv6 add <index> <address>' adds the address to the interface.",
+		  cmd_net_ip6_add),
+	SHELL_CMD(del, NULL,
+		  "'net ipv6 del <index> <address>' deletes the address to the interface.",
+		  cmd_net_ip6_del),
+	SHELL_SUBCMD_SET_END
+);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(net_cmd_route,
+	SHELL_CMD(add, NULL,
+		  "'net route add <index> <destination> <gateway>'" 
+		  " adds the route to the interface.",
+		  cmd_net_ip6_route_add),
+	SHELL_CMD(del, NULL,
+		  "'net route del <index> <destination>'" 
+		  " deletes the route to the interface.",
+		  cmd_net_ip6_route_del),
 	SHELL_SUBCMD_SET_END
 );
 
@@ -6204,7 +6445,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(net_commands,
 	SHELL_CMD(iface, &net_cmd_iface,
 		  "Print information about network interfaces.",
 		  cmd_net_iface),
-	SHELL_CMD(ipv6, NULL,
+	SHELL_CMD(ipv6, &net_cmd_ip6,
 		  "Print information about IPv6 specific information and "
 		  "configuration.",
 		  cmd_net_ipv6),
@@ -6220,7 +6461,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(net_commands,
 	SHELL_CMD(pkt, &net_cmd_pkt, "net_pkt information.", cmd_net_pkt),
 	SHELL_CMD(ppp, &net_cmd_ppp, "PPP information.", cmd_net_ppp_status),
 	SHELL_CMD(resume, NULL, "Resume a network interface", cmd_net_resume),
-	SHELL_CMD(route, NULL, "Show network route.", cmd_net_route),
+	SHELL_CMD(route, &net_cmd_route, "Show network route.", cmd_net_route),
 	SHELL_CMD(stacks, NULL, "Show network stacks information.",
 		  cmd_net_stacks),
 	SHELL_CMD(stats, &net_cmd_stats, "Show network statistics.",
