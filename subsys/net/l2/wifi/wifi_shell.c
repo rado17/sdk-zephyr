@@ -284,6 +284,15 @@ static int cmd_wifi_connect(const struct shell *sh, size_t argc,
 	return 0;
 }
 
+static int cmd_wifi_connect_stored(const struct shell *sh, size_t argc,
+			    char *argv[])
+{
+	struct net_if *iface = net_if_get_default();
+	net_if_connect(iface);
+
+	return 0;
+}
+
 static int cmd_wifi_disconnect(const struct shell *sh, size_t argc,
 			       char *argv[])
 {
@@ -293,7 +302,8 @@ static int cmd_wifi_disconnect(const struct shell *sh, size_t argc,
 	context.disconnecting = true;
 	context.sh = sh;
 
-	status = net_mgmt(NET_REQUEST_WIFI_DISCONNECT, iface, NULL, 0);
+	status = net_if_disconnect(iface);
+	//status = net_mgmt(NET_REQUEST_WIFI_DISCONNECT, iface, NULL, 0);
 
 	if (status) {
 		context.disconnecting = false;
@@ -872,6 +882,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(wifi_commands,
 		  "<MFP (optional: needs security type to be specified)>\n"
 		  ": 0:Disable, 1:Optional, 2:Required",
 		  cmd_wifi_connect),
+	SHELL_CMD(connect_stored, NULL, "connect using stored Wi-Fi AP details",
+		  cmd_wifi_connect_stored),
 	SHELL_CMD(disconnect, NULL, "Disconnect from the Wi-Fi AP",
 		  cmd_wifi_disconnect),
 	SHELL_CMD(ps, NULL, "Configure Wi-Fi power save on/off, no arguments will dump config",
