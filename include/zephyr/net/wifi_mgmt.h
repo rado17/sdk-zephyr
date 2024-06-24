@@ -93,6 +93,14 @@ enum net_request_wifi_cmd {
 	NET_REQUEST_WIFI_CMD_RTS_THRESHOLD,
 	/** Configure AP parameter */
 	NET_REQUEST_WIFI_CMD_AP_CONFIG_PARAM,
+	/** DPP actions */
+	NET_REQUEST_WIFI_CMD_DPP,
+#ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_WNM
+	/** BSS transition management query */
+	NET_REQUEST_WIFI_CMD_BTM_QUERY,
+#endif
+	/** Flush PMKSA cache entries */
+	NET_REQUEST_WIFI_CMD_PMKSA_FLUSH,
 /** @cond INTERNAL_HIDDEN */
 	NET_REQUEST_WIFI_CMD_MAX
 /** @endcond */
@@ -205,6 +213,25 @@ NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_WIFI_RTS_THRESHOLD);
 	(_NET_WIFI_BASE | NET_REQUEST_WIFI_CMD_AP_CONFIG_PARAM)
 
 NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_WIFI_AP_CONFIG_PARAM);
+
+/** Request a Wi-Fi DPP operation */
+#define NET_REQUEST_WIFI_DPP			\
+	(_NET_WIFI_BASE | NET_REQUEST_WIFI_CMD_DPP)
+
+NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_WIFI_DPP);
+
+#ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_WNM
+/** Request a Wi-Fi BTM query */
+#define NET_REQUEST_WIFI_BTM_QUERY (_NET_WIFI_BASE | NET_REQUEST_WIFI_CMD_BTM_QUERY)
+
+NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_WIFI_BTM_QUERY);
+#endif
+
+/** Request a Wi-Fi PMKSA cache entries flush */
+#define NET_REQUEST_WIFI_PMKSA_FLUSH                           \
+	(_NET_WIFI_BASE | NET_REQUEST_WIFI_CMD_PMKSA_FLUSH)
+
+NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_WIFI_PMKSA_FLUSH);
 
 /** @brief Wi-Fi management events */
 enum net_event_wifi_cmd {
@@ -972,6 +999,21 @@ struct wifi_mgmt_ops {
 	 * @return 0 if ok, < 0 if error
 	 */
 	int (*ap_config_params)(const struct device *dev, struct wifi_ap_config_params *params);
+	/** Dispatch DPP operations by action enum, with or without arguments in string format
+	 *
+	 * @param dev Pointer to the device structure for the driver instance
+	 * @param params DPP action enum and parameters in string
+	 *
+	 * @return 0 if ok, < 0 if error
+	 */
+	int (*dpp_dispatch)(const struct device *dev, struct wifi_dpp_params *params);
+	/** Flush PMKSA cache entries
+	 *
+	 * @param dev Pointer to the device structure for the driver instance.
+	 *
+	 * @return 0 if ok, < 0 if error
+	 */
+	int (*pmksa_flush)(const struct device *dev);
 };
 
 /** Wi-Fi management offload API */
