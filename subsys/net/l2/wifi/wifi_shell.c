@@ -2517,6 +2517,7 @@ static int cmd_wifi_dpp_resp_timeout_set(const struct shell *sh, size_t argc, ch
 	}
 	return 0;
 }
+#endif
 
 static int cmd_wifi_dpp_ap_btstrap_gen(const struct shell *sh, size_t argc, char *argv[])
 {
