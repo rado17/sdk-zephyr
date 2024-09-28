@@ -71,7 +71,7 @@ int flash_img_buffered_write(struct flash_img_context *ctx, const uint8_t *data,
 	{
 		if (status_offset > stream_flash_bytes_written(&ctx->stream)) {
 			rc = flash_area_flatten(ctx->flash_area, status_offset,
-						ctx->flash_area->fa_off - status_offset);
+									ctx->flash_area->fa_off - status_offset);
 		} else {
 			rc = 0;
 		}
